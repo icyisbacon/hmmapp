@@ -11,7 +11,7 @@
 	],
 	"kv_namespaces": [
 		{
-			"binding": "KV",
+			"binding": "TODOS_KV",
 			"id": "e1a47156f9134d2c831e9c39f107efd4"
 		}
 	],

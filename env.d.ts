@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20250617.0 2025-07-05 nodejs_compat
 declare namespace Cloudflare {
 	interface Env {
+		TODOS_KV: KVNamespace;
 	}
 }
 interface CloudflareEnv extends Cloudflare.Env {}
