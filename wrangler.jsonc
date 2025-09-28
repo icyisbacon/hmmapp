@@ -9,6 +9,12 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "e1a47156f9134d2c831e9c39f107efd4"
+		}
+	],
 	"pages_build_output_dir": ".vercel/output/static",
 	"observability": {
 		"enabled": true
