@@ -35,7 +35,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { env } = getRequestContext()
-    const { text } = await request.json()
+    const body = await request.json() as { text: string }
+    const { text } = body
     
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return Response.json({ error: 'Todo text is required' }, { status: 400 })
@@ -60,7 +61,8 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const { env } = getRequestContext()
-    const { id, text, completed } = await request.json()
+    const body = await request.json() as { id: string; text?: string; completed?: boolean }
+    const { id, text, completed } = body
     
     if (!id) {
       return Response.json({ error: 'Todo ID is required' }, { status: 400 })
