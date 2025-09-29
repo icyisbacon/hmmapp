@@ -1,81 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Todo = {
   id: string;
   text: string;
-  completed: boolean;
   createdAt: string;
 };
 
-export default function HomePage() {
+export default function Home() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
 
-  // Fetch todos
-  const fetchTodos = async () => {
-    const res = await fetch("/api/todos");
-    const data = (await res.json()) as Todo[];
-
-    // Sort by newest first
-    data.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    setTodos(data);
-  };
-
   useEffect(() => {
-    fetchTodos();
+    fetch("/api/todos")
+      .then((res) => res.json())
+      .then((data) => setTodos(sortByNewest(data)));
   }, []);
 
-  // Add todo
-  const addTodo = async () => {
-    if (!newTodo) return;
+  const sortByNewest = (items: Todo[]) => {
+    return [...items].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  };
+
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+
     const res = await fetch("/api/todos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: newTodo, completed: false, createdAt: new Date().toISOString() }),
+      body: JSON.stringify({ text: newTodo }),
     });
-    const todo = await res.json();
-    setTodos([todo, ...todos]);
+
+    const created = await res.json();
+    setTodos((prev) => sortByNewest([...prev, created]));
     setNewTodo("");
   };
 
-  // Toggle todo
-  const toggleTodo = async (id: string) => {
-    const todo = todos.find((t) => t.id === id);
-    if (!todo) return;
-
-    await fetch(`/api/todos?id=${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: !todo.completed }),
-    });
-
-    setTodos(
-      todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
-  };
-
-  // Delete todo
   const deleteTodo = async (id: string) => {
     await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
-    setTodos(todos.filter((t) => t.id !== id)); // <-- FIXED LINE
+    setTodos((prev) => prev.filter((t) => t.id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4">
-      <h1 className="text-3xl font-bold mb-4">Todo App</h1>
+    <main className="max-w-xl mx-auto pt-12">
+      <h1 className="text-4xl font-bold mb-6 text-center">🔥 Todo App</h1>
 
-      <div className="flex gap-2 mb-6">
+      <form onSubmit={addTodo} className="flex gap-2 mb-6">
         <input
-          type="text"
           value={newTodo}
           onChange={(e) => setNewTodo(e.target.value)}
-          placeholder="Add a new todo..."
-          className="p-2 border rounded w-64"
+          placeholder="Add a new task..."
+          className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600"
         />
-        <button onClick={addTodo} className="bg-blue-500 text-white px-4 rounded">
+        <button className="btn btn-primary">Add</button>
+      </form>
+
+      <AnimatePresence>
+        {todos.map((todo) => (
+          <motion.div
+            key={todo.id}
+            className="todo-card flex justify-between items-center"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+          >
+            <div>
+              <p className="font-medium">{todo.text}</p>
+              <span className="text-xs text-gray-400">
+                {new Date(todo.createdAt).toLocaleString()}
+              </span>
+            </div>
+            <button
+              className="btn btn-danger"
+              onClick={() => deleteTodo(todo.id)}
+            >
+              Delete
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </main>
+  );
+}
