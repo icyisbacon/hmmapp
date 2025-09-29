@@ -1,75 +1,66 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Todo = {
   id: string;
   text: string;
+  completed: boolean;
   createdAt: string;
 };
 
-export default function Page() {
+export default function HomePage() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
+
+  // Fetch todos
+  const fetchTodos = async () => {
+    const res = await fetch("/api/todos");
+    const data = (await res.json()) as Todo[];
+
+    // Sort by newest first
+    data.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    setTodos(data);
+  };
 
   useEffect(() => {
     fetchTodos();
   }, []);
 
-  const fetchTodos = async () => {
-    const res = await fetch("/api/todos");
-    const data = await res.json();
-    // Sort by newest first
-    data.sort((a: Todo, b: Todo) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setTodos(data);
-  };
-
+  // Add todo
   const addTodo = async () => {
-    if (!newTodo.trim()) return;
+    if (!newTodo) return;
     const res = await fetch("/api/todos", {
       method: "POST",
-      body: JSON.stringify({ text: newTodo, createdAt: new Date().toISOString() }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: newTodo, completed: false, createdAt: new Date().toISOString() }),
     });
-    const data = await res.json();
-    setTodos((prev) => [data, ...prev]);
+    const todo = await res.json();
+    setTodos([todo, ...todos]);
     setNewTodo("");
   };
 
-  const deleteTodo = async (id: string) => {
-    await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
-    setTodos((prev) => prev.filter((todo) => todo.id !== id));
+  // Toggle todo
+  const toggleTodo = async (id: string) => {
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+
+    await fetch(`/api/todos?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: !todo.completed }),
+    });
+
+    setTodos(
+      todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+    );
   };
 
-  return (
-    <div className="container">
-      <h1>My Todos</h1>
-      <input
-        placeholder="Add a new todo..."
-        value={newTodo}
-        onChange={(e) => setNewTodo(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && addTodo()}
-      />
-
-      <AnimatePresence>
-        {todos.map((todo) => (
-          <motion.div
-            key={todo.id}
-            className="todo"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div>
-              {todo.text}
-              <div className="timestamp">{new Date(todo.createdAt).toLocaleString()}</div>
-            </div>
-            <button onClick={() => deleteTodo(todo.id)}>Delete</button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  );
-}
+  // Delete todo
+  const deleteTodo = async (id: string) => {
+    await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
+    setTodos(todos.filter((t) => t
