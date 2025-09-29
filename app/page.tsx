@@ -1,141 +1,75 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Todo = {
-  id: string
-  text: string
-  completed: boolean
-  createdAt: string
-}
+  id: string;
+  text: string;
+  createdAt: string;
+};
 
-export default function TodoApp() {
-  const [todos, setTodos] = useState<Todo[]>([])
-  const [newTodo, setNewTodo] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  // Load todos from KV
-  const loadTodos = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/todos')
-      if (response.ok) {
-        const todosData: Todo[] = await response.json()
-        setTodos(todosData)
-      }
-    } catch (error) {
-      console.error('Failed to load todos:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Add new todo
-  const addTodo = async () => {
-    if (!newTodo.trim()) return
-    try {
-      const response = await fetch('/api/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newTodo }),
-      })
-      if (response.ok) {
-        const todo: Todo = await response.json()
-        setTodos((prev) => [...prev, todo])
-        setNewTodo('')
-      }
-    } catch (error) {
-      console.error('Failed to add todo:', error)
-    }
-  }
-
-  // Toggle completion
-  const toggleTodo = async (id: string) => {
-    try {
-      const todo = todos.find((t) => t.id === id)
-      if (!todo) return
-
-      const response = await fetch('/api/todos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, completed: !todo.completed }),
-      })
-
-      if (response.ok) {
-        const updated: Todo = await response.json()
-        setTodos((prev) =>
-          prev.map((t) => (t.id === updated.id ? updated : t))
-        )
-      }
-    } catch (error) {
-      console.error('Failed to toggle todo:', error)
-    }
-  }
-
-  // Delete todo
-  const deleteTodo = async (id: string) => {
-    try {
-      const response = await fetch(`/api/todos?id=${id}`, {
-        method: 'DELETE',
-      })
-      if (response.ok) {
-        setTodos((prev) => prev.filter((t) => t.id !== id))
-      }
-    } catch (error) {
-      console.error('Failed to delete todo:', error)
-    }
-  }
+export default function Page() {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTodo, setNewTodo] = useState("");
 
   useEffect(() => {
-    loadTodos()
-  }, [])
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = async () => {
+    const res = await fetch("/api/todos");
+    const data = await res.json();
+    // Sort by newest first
+    data.sort((a: Todo, b: Todo) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setTodos(data);
+  };
+
+  const addTodo = async () => {
+    if (!newTodo.trim()) return;
+    const res = await fetch("/api/todos", {
+      method: "POST",
+      body: JSON.stringify({ text: newTodo, createdAt: new Date().toISOString() }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    setTodos((prev) => [data, ...prev]);
+    setNewTodo("");
+  };
+
+  const deleteTodo = async (id: string) => {
+    await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
+    setTodos((prev) => prev.filter((todo) => todo.id !== id));
+  };
 
   return (
-    <div className='max-w-md mx-auto mt-10 p-4 bg-white rounded shadow'>
-      <h1 className='text-2xl font-bold mb-4'>Todo App</h1>
-      <div className='flex mb-4'>
-        <input
-          type='text'
-          value={newTodo}
-          onChange={(e) => setNewTodo(e.target.value)}
-          className='flex-1 border p-2 rounded-l'
-          placeholder='Add new todo'
-        />
-        <button
-          onClick={addTodo}
-          className='bg-blue-500 text-white px-4 py-2 rounded-r'
-        >
-          Add
-        </button>
-      </div>
+    <div className="container">
+      <h1>My Todos</h1>
+      <input
+        placeholder="Add a new todo..."
+        value={newTodo}
+        onChange={(e) => setNewTodo(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && addTodo()}
+      />
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {todos.map((todo) => (
-            <li
-              key={todo.id}
-              className='flex justify-between items-center mb-2'
-            >
-              <span
-                onClick={() => toggleTodo(todo.id)}
-                className={`cursor-pointer ${
-                  todo.completed ? 'line-through text-gray-500' : ''
-                }`}
-              >
-                {todo.text}
-              </span>
-              <button
-                onClick={() => deleteTodo(todo.id)}
-                className='text-red-500'
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <AnimatePresence>
+        {todos.map((todo) => (
+          <motion.div
+            key={todo.id}
+            className="todo"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div>
+              {todo.text}
+              <div className="timestamp">{new Date(todo.createdAt).toLocaleString()}</div>
+            </div>
+            <button onClick={() => deleteTodo(todo.id)}>Delete</button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
-  )
+  );
 }
