@@ -63,4 +63,19 @@ export default function HomePage() {
   // Delete todo
   const deleteTodo = async (id: string) => {
     await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
-    setTodos(todos.filter((t) => t
+    setTodos(todos.filter((t) => t.id !== id)); // <-- FIXED LINE
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4">
+      <h1 className="text-3xl font-bold mb-4">Todo App</h1>
+
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          placeholder="Add a new todo..."
+          className="p-2 border rounded w-64"
+        />
+        <button onClick={addTodo} className="bg-blue-500 text-white px-4 rounded">
