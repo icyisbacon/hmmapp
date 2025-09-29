@@ -1,4 +1,4 @@
-echo "'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -6,6 +6,7 @@ type Todo = {
   id: string
   text: string
   completed: boolean
+  createdAt: string
 }
 
 export default function TodoApp() {
@@ -13,6 +14,7 @@ export default function TodoApp() {
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Load todos from KV
   const loadTodos = async () => {
     try {
       setLoading(true)
@@ -28,6 +30,7 @@ export default function TodoApp() {
     }
   }
 
+  // Add new todo
   const addTodo = async () => {
     if (!newTodo.trim()) return
     try {
@@ -46,11 +49,18 @@ export default function TodoApp() {
     }
   }
 
+  // Toggle completion
   const toggleTodo = async (id: string) => {
     try {
-      const response = await fetch(\`/api/todos?id=\${id}\`, {
+      const todo = todos.find((t) => t.id === id)
+      if (!todo) return
+
+      const response = await fetch('/api/todos', {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, completed: !todo.completed }),
       })
+
       if (response.ok) {
         const updated: Todo = await response.json()
         setTodos((prev) =>
@@ -62,9 +72,10 @@ export default function TodoApp() {
     }
   }
 
+  // Delete todo
   const deleteTodo = async (id: string) => {
     try {
-      const response = await fetch(\`/api/todos?id=\${id}\`, {
+      const response = await fetch(`/api/todos?id=${id}`, {
         method: 'DELETE',
       })
       if (response.ok) {
@@ -109,7 +120,9 @@ export default function TodoApp() {
             >
               <span
                 onClick={() => toggleTodo(todo.id)}
-                className={\`cursor-pointer \${todo.completed ? 'line-through text-gray-500' : ''}\`}
+                className={`cursor-pointer ${
+                  todo.completed ? 'line-through text-gray-500' : ''
+                }`}
               >
                 {todo.text}
               </span>
@@ -125,4 +138,4 @@ export default function TodoApp() {
       )}
     </div>
   )
-}" > app/page.tsx
+}
