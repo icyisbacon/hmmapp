@@ -1,32 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Todo = {
   id: string;
   text: string;
+  completed: boolean;
   createdAt: string;
 };
 
-export default function Home() {
+export default function HomePage() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
 
+  // Fetch todos on mount
   useEffect(() => {
-    fetch("/api/todos")
-      .then((res) => res.json())
-      .then((data) => setTodos(sortByNewest(data)));
+    const fetchTodos = async () => {
+      const res = await fetch("/api/todos");
+      const data: unknown = await res.json();
+      const todos = data as Todo[];
+      setTodos(sortByNewest(todos));
+    };
+    fetchTodos();
   }, []);
 
-  const sortByNewest = (items: Todo[]) => {
-    return [...items].sort(
+  const sortByNewest = (items: Todo[]) =>
+    [...items].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  };
 
-  const addTodo = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const addTodo = async () => {
     if (!newTodo.trim()) return;
 
     const res = await fetch("/api/todos", {
@@ -34,10 +38,18 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: newTodo }),
     });
-
-    const created = await res.json();
-    setTodos((prev) => sortByNewest([...prev, created]));
+    const created: Todo = await res.json();
+    setTodos(sortByNewest([created, ...todos]));
     setNewTodo("");
+  };
+
+  const toggleTodo = async (id: string) => {
+    await fetch(`/api/todos?id=${id}`, { method: "PUT" });
+    setTodos((prev) =>
+      sortByNewest(
+        prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      )
+    );
   };
 
   const deleteTodo = async (id: string) => {
@@ -46,43 +58,65 @@ export default function Home() {
   };
 
   return (
-    <main className="max-w-xl mx-auto pt-12">
-      <h1 className="text-4xl font-bold mb-6 text-center">🔥 Todo App</h1>
+    <div className="max-w-md mx-auto mt-10 p-4 bg-gray-100 rounded shadow">
+      <h1 className="text-2xl font-bold mb-4">Todos</h1>
 
-      <form onSubmit={addTodo} className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4">
         <input
+          className="flex-1 p-2 border rounded"
+          type="text"
           value={newTodo}
+          placeholder="Add a todo"
           onChange={(e) => setNewTodo(e.target.value)}
-          placeholder="Add a new task..."
-          className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600"
         />
-        <button className="btn btn-primary">Add</button>
-      </form>
+        <button
+          className="px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={addTodo}
+        >
+          Add
+        </button>
+      </div>
 
-      <AnimatePresence>
-        {todos.map((todo) => (
-          <motion.div
-            key={todo.id}
-            className="todo-card flex justify-between items-center"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-          >
-            <div>
-              <p className="font-medium">{todo.text}</p>
-              <span className="text-xs text-gray-400">
-                {new Date(todo.createdAt).toLocaleString()}
-              </span>
-            </div>
-            <button
-              className="btn btn-danger"
-              onClick={() => deleteTodo(todo.id)}
+      <ul>
+        <AnimatePresence>
+          {todos.map((todo) => (
+            <motion.li
+              key={todo.id}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex justify-between items-center mb-2 p-2 bg-white rounded shadow"
             >
-              Delete
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </main>
+              <div className="flex flex-col">
+                <span
+                  className={`${
+                    todo.completed ? "line-through text-gray-400" : ""
+                  }`}
+                >
+                  {todo.text}
+                </span>
+                <small className="text-gray-500 text-xs">
+                  {new Date(todo.createdAt).toLocaleString()}
+                </small>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="px-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  onClick={() => toggleTodo(todo.id)}
+                >
+                  {todo.completed ? "Undo" : "Done"}
+                </button>
+                <button
+                  className="px-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  onClick={() => deleteTodo(todo.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </div>
   );
 }
